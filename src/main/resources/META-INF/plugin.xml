@@ -18,10 +18,26 @@
     <!-- Product and plugin compatibility requirements.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
     <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.lang</depends>
+    <depends>org.jetbrains.kotlin</depends>
 
     <!-- Extension points defined by the plugin.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
-    <extensions defaultExtensionNs="com.intellij">
 
+    <extensions defaultExtensionNs="com.intellij">
+        <applicationService serviceImplementation="com.example.recentresourcefinder.ResourceTrackerService"/>
+        <postStartupActivity implementation="com.example.recentresourcefinder.ResourceTrackerStartupActivity"/>
     </extensions>
+
+    <actions>
+        <action id="ShowRecentResources"
+                class="com.example.recentresourcefinder.ShowRecentResourcesAction"
+                text="Show Recent Resources"
+                description="Show a popup with recently accessed resources">
+            <keyboard-shortcut
+                    keymap="$default"
+                    first-keystroke="control shift R"/>
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+    </actions>
 </idea-plugin>
