@@ -47,6 +47,12 @@ class RecentFileTrackerService : PersistentStateComponent<RecentFileTrackerServi
         return myState.recentFiles.toList()
     }
 
+    fun getFavoriteFiles(): List<RecentFileItem> {
+        // Favori dosyaları kronolojik sıraya göre değil, eklenme/güncellenme sırasına göre alıyoruz.
+        // Eğer alfabetik sıralama istersen: .sortedBy { it.name } ekleyebilirsin.
+        return myState.recentFiles.filter { it.isFavorite }.toList()
+    }
+
     /**
      * Verilen dosyayı son kullanılanlar listesine ekler veya mevcutsa günceller (en başa taşır).
      */
@@ -58,15 +64,28 @@ class RecentFileTrackerService : PersistentStateComponent<RecentFileTrackerServi
         val fileExtension = file.extension ?: ""
         val fileType = file.fileType.name
 
+        val existingItem = myState.recentFiles.find { it.filePath == filePath }
+        val isCurrentlyFavorite = existingItem?.isFavorite ?: false // Eğer yoksa varsayılan olarak favori değil
+
         // Mevcut dosyayı listeden kaldır
         myState.recentFiles.removeAll { it.filePath == filePath }
 
         // Yeni veya güncellenmiş dosyayı listenin başına ekle
-        myState.recentFiles.add(0, RecentFileItem(filePath, fileName, fileExtension, fileType))
+        myState.recentFiles.add(0, RecentFileItem(filePath, fileName, fileExtension, fileType, isCurrentlyFavorite))
 
         // Listeyi maksimum boyutta tut
         if (myState.recentFiles.size > MAX_RECENT_FILES) {
             myState.recentFiles = CopyOnWriteArrayList(myState.recentFiles.take(MAX_RECENT_FILES))
+        }
+    }
+
+    fun setFileFavoriteStatus(filePath: String, isFavorite: Boolean) {
+        val index = myState.recentFiles.indexOfFirst { it.filePath == filePath }
+        if (index != -1) {
+            val oldItem = myState.recentFiles[index]
+            if (oldItem.isFavorite != isFavorite) {
+                myState.recentFiles[index] = oldItem.copy(isFavorite = isFavorite)
+            }
         }
     }
 

@@ -8,9 +8,10 @@ data class RecentFileItem(
     @Attribute("filePath") val filePath: String, // Dosyanın tam yolu
     @Attribute("name") val name: String,         // Dosyanın uzantısız adı (nameWithoutExtension)
     @Attribute("extension") val extension: String, // Dosyanın uzantısı
-    @Attribute("type") val type: String          // Dosyanın IntelliJ tarafından belirlenen türü (örneğin "Kotlin", "Java", "Text")
+    @Attribute("type") val type: String,        // Dosyanın IntelliJ tarafından belirlenen türü (örneğin "Kotlin", "Java", "Text")
+    @Attribute("isFavorite") var isFavorite: Boolean = false
 ) {
 
     @Suppress("unused")
-    private constructor() : this("", "", "", "")
+    private constructor() : this("", "", "", "", false)
 }
