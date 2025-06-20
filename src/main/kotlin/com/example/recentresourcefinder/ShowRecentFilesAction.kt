@@ -34,7 +34,7 @@ class ShowRecentFilesAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
         project = e.project ?: return
 
-        val tracker = RecentFileTrackerService.getInstance()
+        val tracker = RecentFileTrackerService.getInstance(project)
 
         recentFilesList = JBList<RecentFileItem>()
         recentFilesList.cellRenderer = RecentFileItemRenderer()
@@ -173,7 +173,7 @@ class ShowRecentFilesAction : AnAction() {
                 val selectedItem = list.selectedValue ?: return
 
                 val popupMenu = JPopupMenu()
-                val tracker = RecentFileTrackerService.getInstance()
+                val tracker = RecentFileTrackerService.getInstance(project)
 
                 val favoriteMenuItem =
                     JMenuItem(if (selectedItem.isFavorite) "Remove from Favorites" else "Add to Favorites")

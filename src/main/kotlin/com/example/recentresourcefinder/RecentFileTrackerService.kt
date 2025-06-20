@@ -1,23 +1,23 @@
 package com.example.recentresourcefinder
 
-import com.intellij.openapi.components.Service
-import com.intellij.openapi.components.PersistentStateComponent
-import com.intellij.openapi.components.State
-import com.intellij.openapi.components.Storage
 import com.intellij.util.xmlb.XmlSerializerUtil
 import com.intellij.openapi.fileEditor.FileDocumentManagerListener
 import com.intellij.openapi.fileEditor.FileEditorManagerListener
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.components.*
 import java.util.concurrent.CopyOnWriteArrayList
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.components.StoragePathMacros
 
 @State(
     name = "RecentFileTrackerService",
-    storages = [Storage("RecentFilesPlugin.xml")]
+    storages = [Storage(StoragePathMacros.WORKSPACE_FILE)]
 )
-@Service(Service.Level.APP)
-class RecentFileTrackerService : PersistentStateComponent<RecentFileTrackerService.State>, FileDocumentManagerListener,
+@Service(Service.Level.PROJECT)
+class RecentFileTrackerService(private val project: Project) : PersistentStateComponent<RecentFileTrackerService.State>,
+    FileDocumentManagerListener,
     FileEditorManagerListener {
 
     class State {
@@ -29,7 +29,7 @@ class RecentFileTrackerService : PersistentStateComponent<RecentFileTrackerServi
     private val MAX_RECENT_FILES = 50
 
     init {
-        val connection = ApplicationManager.getApplication().messageBus.connect()
+        val connection = project.messageBus.connect()
         connection.subscribe(FileDocumentManagerListener.TOPIC, this)
         connection.subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, this)
     }
@@ -58,6 +58,9 @@ class RecentFileTrackerService : PersistentStateComponent<RecentFileTrackerServi
      */
     private fun addOrUpdateRecentFile(file: VirtualFile) {
         if (file.isDirectory || file.fileSystem.protocol != "file" || !file.isValid) return
+        if (!file.path.startsWith(project.basePath ?: "")) {
+            return
+        }
 
         val filePath = file.path
         val fileName = file.nameWithoutExtension
@@ -119,7 +122,7 @@ class RecentFileTrackerService : PersistentStateComponent<RecentFileTrackerServi
     }
 
     companion object {
-        fun getInstance(): RecentFileTrackerService =
-            ApplicationManager.getApplication().getService(RecentFileTrackerService::class.java)
+        fun getInstance(project: Project): RecentFileTrackerService =
+            project.getService(RecentFileTrackerService::class.java)
     }
 }
