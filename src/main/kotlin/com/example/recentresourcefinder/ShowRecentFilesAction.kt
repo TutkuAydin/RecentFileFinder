@@ -6,65 +6,39 @@ import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.ui.components.JBList
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.fileEditor.FileEditorManager
-import com.intellij.openapi.util.text.StringUtil
 import com.intellij.ui.components.JBPanel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.JBUI
+
 import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Dimension
 import java.awt.FlowLayout
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
+import com.intellij.openapi.ui.ComboBox
 import javax.swing.*
-import javax.swing.border.EmptyBorder
 
 class ShowRecentFilesAction : AnAction() {
+    private lateinit var allRecentFiles: List<RecentFileItem>
+    private lateinit var list: JBList<RecentFileItem>
+    private lateinit var project: com.intellij.openapi.project.Project
+    private lateinit var popup: com.intellij.openapi.ui.popup.JBPopup
+
     override fun actionPerformed(e: AnActionEvent) {
-        val project = e.project ?: return
+        project = e.project ?: return
 
         val tracker = RecentFileTrackerService.getInstance()
+        allRecentFiles = tracker.getRecentFiles()
 
-        val allRecentFiles = tracker.getRecentFiles()
-
-        val list = JBList<RecentFileItem>()
+        list = JBList<RecentFileItem>()
         list.cellRenderer = RecentFileItemRenderer()
 
-        val scrollPane = JBScrollPane(list)
-        val mainPanel = JBPanel<JBPanel<*>>(BorderLayout())
+        val typeFilterComboBox = createTypeFilterComboBox(tracker, list)
 
-        val fileTypes = mutableListOf("Tüm Dosyalar").apply {
-            addAll(tracker.getAllUniqueFileTypes())
-        }
-
-        val comboBoxModel = DefaultComboBoxModel(fileTypes.toTypedArray())
-        val typeFilterComboBox = JComboBox(comboBoxModel)
-        typeFilterComboBox.preferredSize = Dimension(150, typeFilterComboBox.preferredSize.height)
-        val comboBoxPanel = JPanel(FlowLayout(FlowLayout.RIGHT, JBUI.scale(5), 0))
-        comboBoxPanel.add(typeFilterComboBox)
-
-        mainPanel.add(comboBoxPanel, BorderLayout.NORTH)
-        mainPanel.add(scrollPane, BorderLayout.CENTER)
-
-        val updateFileList = { selectedType: String ->
-            val filteredFiles = if (selectedType == "Tüm Dosyalar") {
-                allRecentFiles
-            } else {
-                allRecentFiles.filter { it.type == selectedType }
-            }
-            list.setListData(filteredFiles.toTypedArray())
-            if (filteredFiles.isNotEmpty()) {
-                list.selectedIndex = 0
-            }
-        }
-
-        typeFilterComboBox.addActionListener {
-            val selectedType = typeFilterComboBox.selectedItem as String
-            updateFileList(selectedType)
-        }
+        val mainPanel = createMainPanel(typeFilterComboBox, JBScrollPane(list))
 
         updateFileList("Tüm Dosyalar")
-
 
         val preferredSize = Dimension(450, 400)
 
@@ -80,12 +54,65 @@ class ShowRecentFilesAction : AnAction() {
             .setBelongsToGlobalPopupStack(true) // Global popup yığınına ait olsun
             .setMinSize(preferredSize) // Minimum boyut belirle
 
-        val popup = popupBuilder.createPopup()
-        // Listeye MouseListener ekleyerek çift tıklama olayını yakalıyoruz
+        popup = popupBuilder.createPopup()
+
+        addListListeners()
+
+        popup.showInFocusCenter()
+    }
+
+    private fun createTypeFilterComboBox(
+        tracker: RecentFileTrackerService,
+        listToFocus: JBList<RecentFileItem>
+    ): ComboBox<String> {
+        val fileTypes = mutableListOf("Tüm Dosyalar").apply {
+            addAll(tracker.getAllUniqueFileTypes())
+        }
+        val comboBoxModel = DefaultComboBoxModel(fileTypes.toTypedArray())
+        val typeFilterComboBox = ComboBox(comboBoxModel)
+
+        typeFilterComboBox.preferredSize = Dimension(150, typeFilterComboBox.preferredSize.height)
+
+        typeFilterComboBox.addActionListener {
+            val selectedType = typeFilterComboBox.selectedItem as String
+            updateFileList(selectedType)
+
+            listToFocus.requestFocusInWindow()
+            if (listToFocus.model.size > 0) {
+                listToFocus.selectedIndex = 0
+            }
+        }
+        return typeFilterComboBox
+    }
+
+    private fun createMainPanel(typeFilterComboBox: ComboBox<String>, scrollPane: JBScrollPane): JBPanel<*> {
+        val mainPanel = JBPanel<JBPanel<*>>(BorderLayout())
+
+        val comboBoxPanel = JPanel(FlowLayout(FlowLayout.RIGHT, JBUI.scale(5), 0))
+        comboBoxPanel.add(typeFilterComboBox)
+
+        mainPanel.add(comboBoxPanel, BorderLayout.NORTH)
+        mainPanel.add(scrollPane, BorderLayout.CENTER)
+        return mainPanel
+    }
+
+    private fun updateFileList(selectedType: String) {
+        val filteredFiles = if (selectedType == "Tüm Dosyalar") {
+            allRecentFiles
+        } else {
+            allRecentFiles.filter { it.type == selectedType }
+        }
+        list.setListData(filteredFiles.toTypedArray())
+        if (filteredFiles.isNotEmpty()) {
+            list.selectedIndex = 0
+        }
+    }
+
+    private fun addListListeners() {
         list.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(mouseEvent: MouseEvent) {
-                if (mouseEvent.clickCount == 2) { // Çift tıklama kontrolü
-                    val item = list.selectedValue // Doğrudan RecentFileItem alıyoruz
+                if (mouseEvent.clickCount == 2) {
+                    val item = list.selectedValue
                     if (item != null) {
                         popup.closeOk(mouseEvent)
                         val file = VirtualFileManager.getInstance().findFileByUrl("file://${item.filePath}")
@@ -96,7 +123,6 @@ class ShowRecentFilesAction : AnAction() {
                 }
             }
         })
-        // Klavyeden Enter tuşuna basıldığında da dosyanın açılmasını sağlayalım
         list.addKeyListener(object : java.awt.event.KeyAdapter() {
             override fun keyPressed(e: java.awt.event.KeyEvent) {
                 if (e.keyCode == java.awt.event.KeyEvent.VK_ENTER) {
@@ -111,13 +137,12 @@ class ShowRecentFilesAction : AnAction() {
                 }
             }
         })
-        popup.showInFocusCenter()
     }
 
     private class RecentFileItemRenderer : JLabel(), ListCellRenderer<RecentFileItem> {
         init {
             isOpaque = true
-            border = EmptyBorder(1, 1, 1, 1)
+            border = JBUI.Borders.empty(JBUI.scale(1), JBUI.scale(1), JBUI.scale(1), JBUI.scale(1))
         }
 
         override fun getListCellRendererComponent(
