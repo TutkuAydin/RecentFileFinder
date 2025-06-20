@@ -35,7 +35,7 @@
                 description="Show a popup with recently accessed resources">
             <keyboard-shortcut
                     keymap="$default"
-                    first-keystroke="control shift R"/>
+                    first-keystroke="control shift S"/>
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
     </actions>

@@ -20,6 +20,10 @@ class RecentFileTrackerService {
 
     fun getRecentFiles(): List<RecentFileItem> = recentFiles.toList()
 
+    fun getAllUniqueFileTypes(): List<String> {
+        return recentFiles.map { it.type }.distinct().sorted()
+    }
+
     companion object {
         fun getInstance(): RecentFileTrackerService {
             return ApplicationManager.getApplication().getService(RecentFileTrackerService::class.java)
