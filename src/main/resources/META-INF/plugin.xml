@@ -25,13 +25,12 @@
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
 
     <extensions defaultExtensionNs="com.intellij">
-        <applicationService serviceImplementation="com.example.recentresourcefinder.ResourceTrackerService"/>
-        <postStartupActivity implementation="com.example.recentresourcefinder.ResourceTrackerStartupActivity"/>
+        <postStartupActivity implementation="com.example.recentresourcefinder.RecentFileTrackerStartupActivity"/>
     </extensions>
 
     <actions>
         <action id="ShowRecentResources"
-                class="com.example.recentresourcefinder.ShowRecentResourcesAction"
+                class="com.example.recentresourcefinder.ShowRecentFilesAction"
                 text="Show Recent Resources"
                 description="Show a popup with recently accessed resources">
             <keyboard-shortcut
