@@ -6,10 +6,10 @@ import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.ui.components.JBList
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.ui.components.JBPanel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.JBUI
-
 import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Dimension
@@ -18,6 +18,7 @@ import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import com.intellij.openapi.ui.ComboBox
 import javax.swing.*
+import com.intellij.util.PlatformIcons
 
 class ShowRecentFilesAction : AnAction() {
     private lateinit var allRecentFiles: List<RecentFileItem>
@@ -40,7 +41,7 @@ class ShowRecentFilesAction : AnAction() {
 
         updateFileList("Tüm Dosyalar")
 
-        val preferredSize = Dimension(450, 400)
+        val preferredSize = Dimension(400, 300)
 
         val popupBuilder = JBPopupFactory.getInstance()
             .createComponentPopupBuilder(mainPanel, list)
@@ -154,14 +155,14 @@ class ShowRecentFilesAction : AnAction() {
         ): Component {
             if (value == null) {
                 text = ""
+                icon = null
                 return this
             }
 
-            text = "${value.name}.${value.filePath.substringAfterLast('.')}"
+            text = "${value.name}.${value.extension}"
 
-            // TODO: İsterseniz buraya dosya türüne göre ikon ekleyebilirsiniz
-            // val icon = com.intellij.ide.FileIconProvider.forFile(file)?.getIcon(file, FLAGS)
-            // setIcon(icon)
+            val fileType = FileTypeManager.getInstance().getFileTypeByExtension(value.extension)
+            icon = fileType.icon ?: PlatformIcons.FILE_ICON
 
             if (isSelected) {
                 background = list.selectionBackground
