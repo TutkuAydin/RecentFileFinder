@@ -51,11 +51,11 @@ class ShowRecentFilesAction : AnAction() {
 
         recentFilesList = JBList<RecentFileItem>()
         recentFilesList.cellRenderer = recentFileRenderer
-        recentFilesList.emptyText.text = "No recent files matching your search."
+        recentFilesList.emptyText.text = "No recent files opened yet."
 
         favoriteFilesList = JBList<RecentFileItem>()
         favoriteFilesList.cellRenderer = favoriteFileRenderer
-        favoriteFilesList.emptyText.text = "No favorite files matching your search."
+        favoriteFilesList.emptyText.text = "You don't have any favorite files yet. Right-click a file to add it."
 
         typeFilterComboBox = createTypeFilterComboBox(tracker)
 
@@ -104,18 +104,20 @@ class ShowRecentFilesAction : AnAction() {
         tabbedPane.addChangeListener(object : ChangeListener {
             override fun stateChanged(e: ChangeEvent?) {
                 clearRecentButton.isVisible = tabbedPane.selectedIndex == 0
+                updateEmptyTextMessages()
             }
         })
 
         val mainPanel = createMainPanel(searchField, typeFilterComboBox, clearRecentButton, tabbedPane)
 
         updateLists(tracker)
+        updateEmptyTextMessages()
 
         val preferredSize = Dimension(450, 400)
 
         val popupBuilder = JBPopupFactory.getInstance()
             .createComponentPopupBuilder(mainPanel, recentFilesList)
-            .setTitle("Son Kullanılan Dosyalar & Favoriler")
+            .setTitle("Recent Files & Favorites")
             .setMovable(true)
             .setResizable(true)
             .setDimensionServiceKey(project, "RecentFilesPopup", true)
@@ -134,6 +136,18 @@ class ShowRecentFilesAction : AnAction() {
         addListListeners(favoriteFilesList)
 
         popup.showInFocusCenter()
+    }
+
+    private fun updateEmptyTextMessages() {
+        val searchText = searchField.text.lowercase()
+
+        if (searchText.isNotBlank()) {
+            recentFilesList.emptyText.text = "No recent files found matching your search criteria."
+            favoriteFilesList.emptyText.text = "No favorite files found matching your search criteria."
+        } else {
+            recentFilesList.emptyText.text = "No recent files opened yet."
+            favoriteFilesList.emptyText.text = "You don't have any favorite files yet. Right-click a file to add it."
+        }
     }
 
     private fun createTypeFilterComboBox(tracker: RecentFileTrackerService): ComboBox<String> {
@@ -217,8 +231,15 @@ class ShowRecentFilesAction : AnAction() {
 
         favoriteFilesList.setListData(filteredFavoriteFiles.toTypedArray())
 
-        if (recentFilesList.model.size > 0) recentFilesList.selectedIndex = 0
-        else if (favoriteFilesList.model.size > 0) favoriteFilesList.selectedIndex = 0
+        updateEmptyTextMessages()
+
+        if (recentFilesList.model.size > 0) {
+            recentFilesList.selectedIndex = 0
+            recentFilesList.ensureIndexIsVisible(0)
+        } else if (favoriteFilesList.model.size > 0) {
+            favoriteFilesList.selectedIndex = 0
+            favoriteFilesList.ensureIndexIsVisible(0)
+        }
     }
 
     private fun addListListeners(listToListen: JBList<RecentFileItem>) {
