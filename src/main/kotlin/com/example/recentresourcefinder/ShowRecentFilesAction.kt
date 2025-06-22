@@ -22,7 +22,6 @@ import com.intellij.ui.components.*
 import com.intellij.ui.components.fields.ExtendableTextComponent
 import com.intellij.ui.components.fields.ExtendableTextField
 import com.intellij.util.PlatformIcons
-import java.awt.event.KeyAdapter
 import java.awt.event.KeyEvent
 import javax.swing.*
 import javax.swing.event.ChangeEvent
@@ -274,12 +273,36 @@ class ShowRecentFilesAction : AnAction() {
         }
     }
 
-    private class RecentFileItemRenderer : JLabel(), ListCellRenderer<RecentFileItem> {
+    private class RecentFileItemRenderer : JPanel(), ListCellRenderer<RecentFileItem> {
         private val FAVORITE_OVERLAY_ICON = AllIcons.Nodes.Favorite
+        private val iconLabel: JLabel = JLabel()
+        private val fileNameLabel: JLabel = JLabel()
+        private val filePathLabel: JLabel = JLabel()
 
         init {
+            layout =
+                BorderLayout() // Veya FlowLayout(FlowLayout.LEFT, 0, 0)
+
+            add(iconLabel, BorderLayout.WEST)
+
+            val textPanel = JPanel()
+            textPanel.layout = BoxLayout(textPanel, BoxLayout.Y_AXIS)
+            textPanel.isOpaque = false
+
+            fileNameLabel.alignmentX = Component.LEFT_ALIGNMENT
+            textPanel.add(fileNameLabel)
+
+            textPanel.add(Box.createVerticalStrut(JBUI.scale(2)))
+
+            filePathLabel.alignmentX = Component.LEFT_ALIGNMENT
+            filePathLabel.font = filePathLabel.font.deriveFont(filePathLabel.font.size * 0.9f)
+            filePathLabel.foreground = JBUI.CurrentTheme.Label.disabledForeground()
+            textPanel.add(filePathLabel)
+
+            add(textPanel, BorderLayout.CENTER)
+
             isOpaque = true
-            border = JBUI.Borders.empty(JBUI.scale(1), JBUI.scale(5), JBUI.scale(1), JBUI.scale(1))
+            border = JBUI.Borders.empty(JBUI.scale(2), JBUI.scale(5))
         }
 
         override fun getListCellRendererComponent(
@@ -290,12 +313,13 @@ class ShowRecentFilesAction : AnAction() {
             cellHasFocus: Boolean
         ): Component {
             if (value == null) {
-                text = ""
-                icon = null
+                iconLabel.icon = null
+                fileNameLabel.text = ""
+                filePathLabel.text = ""
+                background = list.background
                 return this
             }
 
-            text = "${value.name}.${value.extension}"
             val fileType = FileTypeManager.getInstance().getFileTypeByExtension(value.extension)
             val mainIcon: Icon = fileType.icon ?: PlatformIcons.FILE_ICON
 
@@ -303,25 +327,36 @@ class ShowRecentFilesAction : AnAction() {
                 val layeredIcon = LayeredIcon(2)
                 layeredIcon.setIcon(mainIcon, 0)
                 layeredIcon.setIcon(FAVORITE_OVERLAY_ICON, 1, 8, 8)
-                icon = layeredIcon
+                iconLabel.icon = layeredIcon
             } else {
-                icon = mainIcon
+                iconLabel.icon = mainIcon
+            }
+            iconLabel.border = JBUI.Borders.emptyRight(JBUI.scale(5))
+
+            fileNameLabel.text = "${value.name}.${value.extension}"
+            fileNameLabel.font = if (value.isFavorite) {
+                fileNameLabel.font.deriveFont(java.awt.Font.BOLD)
+            } else {
+                fileNameLabel.font.deriveFont(java.awt.Font.PLAIN)
             }
 
+            val fullPath = value.filePath
+            val abbreviatedPath = PathUtil.abbreviatePath(fullPath, 50)
+            filePathLabel.text = abbreviatedPath
+            filePathLabel.toolTipText = fullPath
 
             if (isSelected) {
                 background = list.selectionBackground
-                foreground = list.selectionForeground
+                fileNameLabel.foreground = list.selectionForeground
+                filePathLabel.foreground = list.selectionForeground
             } else {
                 background = list.background
-                foreground = list.foreground
+                fileNameLabel.foreground = list.foreground
+                filePathLabel.foreground = JBUI.CurrentTheme.Label.disabledForeground()
             }
 
-            font = if (value.isFavorite) {
-                font.deriveFont(java.awt.Font.BOLD)
-            } else {
-                font.deriveFont(java.awt.Font.PLAIN)
-            }
+            preferredSize = Dimension(list.width, JBUI.scale(40))
+
             return this
         }
     }

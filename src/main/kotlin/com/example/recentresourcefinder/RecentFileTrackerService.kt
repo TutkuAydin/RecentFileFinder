@@ -5,7 +5,6 @@ import com.intellij.openapi.fileEditor.FileDocumentManagerListener
 import com.intellij.openapi.fileEditor.FileEditorManagerListener
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.*
 import java.util.concurrent.CopyOnWriteArrayList
 import com.intellij.openapi.project.Project
