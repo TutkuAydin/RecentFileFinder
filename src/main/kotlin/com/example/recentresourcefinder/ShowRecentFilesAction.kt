@@ -37,6 +37,8 @@ class ShowRecentFilesAction : AnAction() {
     private lateinit var typeFilterComboBox: ComboBox<String>
     private lateinit var searchField: ExtendableTextField
     private lateinit var clearRecentButton: JButton
+    private lateinit var recentFileRenderer: RecentFileItemRenderer
+    private lateinit var favoriteFileRenderer: RecentFileItemRenderer
 
     private var isConfirmationDialogOpen: Boolean = false
 
@@ -44,13 +46,15 @@ class ShowRecentFilesAction : AnAction() {
         project = e.project ?: return
 
         val tracker = RecentFileTrackerService.getInstance(project)
+        recentFileRenderer = RecentFileItemRenderer()
+        favoriteFileRenderer = RecentFileItemRenderer()
 
         recentFilesList = JBList<RecentFileItem>()
-        recentFilesList.cellRenderer = RecentFileItemRenderer()
+        recentFilesList.cellRenderer = recentFileRenderer
         recentFilesList.emptyText.text = "No recent files matching your search."
 
         favoriteFilesList = JBList<RecentFileItem>()
-        favoriteFilesList.cellRenderer = RecentFileItemRenderer()
+        favoriteFilesList.cellRenderer = favoriteFileRenderer
         favoriteFilesList.emptyText.text = "No favorite files matching your search."
 
         typeFilterComboBox = createTypeFilterComboBox(tracker)
@@ -187,6 +191,9 @@ class ShowRecentFilesAction : AnAction() {
         val selectedType = typeFilterComboBox.selectedItem as String
         val searchText = searchField.text.lowercase()
 
+        recentFileRenderer.setSearchText(searchText)
+        favoriteFileRenderer.setSearchText(searchText)
+
         val allRecentFiles = tracker.getRecentFiles()
         val allFavoriteFiles = tracker.getFavoriteFiles()
         val filteredRecentFiles = allRecentFiles.filter { item ->
@@ -279,6 +286,8 @@ class ShowRecentFilesAction : AnAction() {
         private val fileNameLabel: JLabel = JLabel()
         private val filePathLabel: JLabel = JLabel()
 
+        private var currentSearchText: String = ""
+
         init {
             layout =
                 BorderLayout() // Veya FlowLayout(FlowLayout.LEFT, 0, 0)
@@ -303,6 +312,10 @@ class ShowRecentFilesAction : AnAction() {
 
             isOpaque = true
             border = JBUI.Borders.empty(JBUI.scale(2), JBUI.scale(5))
+        }
+
+        fun setSearchText(text: String) {
+            currentSearchText = text.lowercase()
         }
 
         override fun getListCellRendererComponent(
@@ -333,16 +346,18 @@ class ShowRecentFilesAction : AnAction() {
             }
             iconLabel.border = JBUI.Borders.emptyRight(JBUI.scale(5))
 
-            fileNameLabel.text = "${value.name}.${value.extension}"
+            val displayName = "${value.name}.${value.extension}"
+            fileNameLabel.text = applyHighlighting(displayName, currentSearchText)
             fileNameLabel.font = if (value.isFavorite) {
                 fileNameLabel.font.deriveFont(java.awt.Font.BOLD)
             } else {
                 fileNameLabel.font.deriveFont(java.awt.Font.PLAIN)
             }
 
+
             val fullPath = value.filePath
             val abbreviatedPath = PathUtil.abbreviatePath(fullPath, 50)
-            filePathLabel.text = abbreviatedPath
+            filePathLabel.text = applyHighlighting(abbreviatedPath, currentSearchText)
             filePathLabel.toolTipText = fullPath
 
             if (isSelected) {
@@ -358,6 +373,32 @@ class ShowRecentFilesAction : AnAction() {
             preferredSize = Dimension(list.width, JBUI.scale(40))
 
             return this
+        }
+
+        private fun applyHighlighting(
+            text: String,
+            searchText: String
+        ): String {
+            if (searchText.isBlank() || !text.lowercase().contains(searchText)) {
+                return text
+            }
+
+            val lowercaseText = text.lowercase()
+            val start = lowercaseText.indexOf(searchText)
+            if (start == -1) {
+                return text
+            }
+
+            val end = start + searchText.length
+
+            val highlightColorHex = "#FFC000"
+
+            val prefix = text.substring(0, start)
+            val highlighted = text.substring(start, end)
+            val suffix = text.substring(end)
+
+            return "<html>$prefix<font color='$highlightColorHex'>$highlighted</font>$suffix</html>"
+
         }
     }
 }
