@@ -48,9 +48,14 @@ class RecentFileTrackerService(private val project: Project) : PersistentStateCo
     }
 
     fun getFavoriteFiles(): List<RecentFileItem> {
-        // Favori dosyaları kronolojik sıraya göre değil, eklenme/güncellenme sırasına göre alıyoruz.
-        // Eğer alfabetik sıralama istersen: .sortedBy { it.name } ekleyebilirsin.
         return myState.recentFiles.filter { it.isFavorite }.toList()
+    }
+
+    fun clearRecentFiles() {
+        val nonFavoriteFiles = myState.recentFiles.filter { !it.isFavorite }
+        if (nonFavoriteFiles.isNotEmpty()) {
+            myState.recentFiles.removeAll(nonFavoriteFiles.toSet()) // Performans için toSet() kullanabiliriz
+        }
     }
 
     /**
@@ -68,7 +73,7 @@ class RecentFileTrackerService(private val project: Project) : PersistentStateCo
         val fileType = file.fileType.name
 
         val existingItem = myState.recentFiles.find { it.filePath == filePath }
-        val isCurrentlyFavorite = existingItem?.isFavorite ?: false // Eğer yoksa varsayılan olarak favori değil
+        val isCurrentlyFavorite = existingItem?.isFavorite ?: false
 
         // Mevcut dosyayı listeden kaldır
         myState.recentFiles.removeAll { it.filePath == filePath }

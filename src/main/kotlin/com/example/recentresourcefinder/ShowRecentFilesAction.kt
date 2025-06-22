@@ -4,11 +4,8 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.ui.popup.JBPopupFactory
-import com.intellij.ui.components.JBList
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.fileEditor.FileEditorManager
-import com.intellij.ui.components.JBPanel
-import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
 import java.awt.Component
@@ -19,10 +16,19 @@ import java.awt.event.MouseEvent
 
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.fileTypes.FileTypeManager
+import com.intellij.openapi.ui.Messages
 import com.intellij.ui.LayeredIcon
+import com.intellij.ui.components.*
+import com.intellij.ui.components.fields.ExtendableTextComponent
+import com.intellij.ui.components.fields.ExtendableTextField
 import com.intellij.util.PlatformIcons
-import com.intellij.ui.components.JBTabbedPane
+import java.awt.event.KeyAdapter
+import java.awt.event.KeyEvent
 import javax.swing.*
+import javax.swing.event.ChangeEvent
+import javax.swing.event.ChangeListener
+import javax.swing.event.DocumentEvent
+import javax.swing.event.DocumentListener
 
 class ShowRecentFilesAction : AnAction() {
     private lateinit var recentFilesList: JBList<RecentFileItem>
@@ -30,6 +36,10 @@ class ShowRecentFilesAction : AnAction() {
     private lateinit var project: com.intellij.openapi.project.Project
     private lateinit var popup: com.intellij.openapi.ui.popup.JBPopup
     private lateinit var typeFilterComboBox: ComboBox<String>
+    private lateinit var searchField: ExtendableTextField
+    private lateinit var clearRecentButton: JButton
+
+    private var isConfirmationDialogOpen: Boolean = false
 
     override fun actionPerformed(e: AnActionEvent) {
         project = e.project ?: return
@@ -38,17 +48,63 @@ class ShowRecentFilesAction : AnAction() {
 
         recentFilesList = JBList<RecentFileItem>()
         recentFilesList.cellRenderer = RecentFileItemRenderer()
+        recentFilesList.emptyText.text = "No recent files matching your search."
 
         favoriteFilesList = JBList<RecentFileItem>()
         favoriteFilesList.cellRenderer = RecentFileItemRenderer()
+        favoriteFilesList.emptyText.text = "No favorite files matching your search."
 
         typeFilterComboBox = createTypeFilterComboBox(tracker)
+
+        searchField = ExtendableTextField().apply {
+            emptyText.text = "Search file name or path..."
+            document.addDocumentListener(object : DocumentListener {
+                override fun insertUpdate(e: DocumentEvent?) = updateLists(tracker)
+                override fun removeUpdate(e: DocumentEvent?) = updateLists(tracker)
+                override fun changedUpdate(e: DocumentEvent?) = updateLists(tracker)
+            })
+            addExtension(object : ExtendableTextComponent.Extension {
+                override fun getTooltip(): String = "Search"
+                override fun getIcon(hovered: Boolean): Icon {
+                    return AllIcons.Actions.Search
+                }
+
+                override fun getActionOnClick(): Runnable = Runnable {
+                    updateLists(tracker)
+                }
+            })
+        }
+
+        clearRecentButton = JButton("Clear List").apply {
+            toolTipText = "Clear non-favorite recent files from the list for this project."
+            addActionListener {
+                isConfirmationDialogOpen = true
+
+                val result = Messages.showYesNoDialog(
+                    popup.content,
+                    "Are you sure you want to clear all non-favorite recent files for this project?",
+                    "Clear Recent Files",
+                    Messages.getWarningIcon()
+                )
+                isConfirmationDialogOpen = false
+                if (result == Messages.YES) {
+                    tracker.clearRecentFiles()
+                    updateLists(tracker)
+                }
+            }
+        }
 
         val tabbedPane = JBTabbedPane()
         tabbedPane.addTab("Recent Files", JBScrollPane(recentFilesList))
         tabbedPane.addTab("Favorites", JBScrollPane(favoriteFilesList))
 
-        val mainPanel = createMainPanel(typeFilterComboBox, tabbedPane)
+        tabbedPane.addChangeListener(object : ChangeListener {
+            override fun stateChanged(e: ChangeEvent?) {
+                clearRecentButton.isVisible = tabbedPane.selectedIndex == 0
+            }
+        })
+
+        val mainPanel = createMainPanel(searchField, typeFilterComboBox, clearRecentButton, tabbedPane)
 
         updateLists(tracker)
 
@@ -62,9 +118,12 @@ class ShowRecentFilesAction : AnAction() {
             .setDimensionServiceKey(project, "RecentFilesPopup", true)
             .setFocusable(true)
             .setRequestFocus(true)
-            .setCancelOnWindowDeactivation(true)
             .setBelongsToGlobalPopupStack(true)
             .setMinSize(preferredSize)
+            .setCancelCallback {
+                !isConfirmationDialogOpen
+            }
+            .setCancelOnWindowDeactivation(true)
 
         popup = popupBuilder.createPopup()
 
@@ -95,13 +154,30 @@ class ShowRecentFilesAction : AnAction() {
         return typeFilterComboBox
     }
 
-    private fun createMainPanel(typeFilterComboBox: ComboBox<String>, tabbedPane: JBTabbedPane): JBPanel<*> {
+    private fun createMainPanel(
+        searchField: ExtendableTextField,
+        typeFilterComboBox: ComboBox<String>,
+        clearButton: JButton,
+        tabbedPane: JBTabbedPane
+    ): JBPanel<*> {
         val mainPanel = JBPanel<JBPanel<*>>(BorderLayout())
 
         val topPanel = JPanel(BorderLayout())
-        val comboBoxPanel = JPanel(FlowLayout(FlowLayout.RIGHT, JBUI.scale(5), 0))
-        comboBoxPanel.add(typeFilterComboBox)
-        topPanel.add(comboBoxPanel, BorderLayout.EAST)
+        val filterPanel = JPanel(BorderLayout(JBUI.scale(5), 0))
+
+        val searchFieldPanel = JPanel(BorderLayout())
+        searchFieldPanel.add(searchField, BorderLayout.CENTER)
+        searchFieldPanel.border = JBUI.Borders.emptyLeft(JBUI.scale(5))
+
+        filterPanel.add(searchFieldPanel, BorderLayout.CENTER)
+
+        val rightSidePanel = JPanel(FlowLayout(FlowLayout.RIGHT, JBUI.scale(5), 0))
+        rightSidePanel.add(typeFilterComboBox)
+        rightSidePanel.add(clearButton)
+
+        filterPanel.add(rightSidePanel, BorderLayout.EAST)
+
+        topPanel.add(filterPanel, BorderLayout.CENTER)
 
         mainPanel.add(topPanel, BorderLayout.NORTH)
         mainPanel.add(tabbedPane, BorderLayout.CENTER)
@@ -110,19 +186,29 @@ class ShowRecentFilesAction : AnAction() {
 
     private fun updateLists(tracker: RecentFileTrackerService) {
         val selectedType = typeFilterComboBox.selectedItem as String
+        val searchText = searchField.text.lowercase()
 
-        val filteredRecentFiles = if (selectedType == "All Files") {
-            tracker.getRecentFiles()
-        } else {
-            tracker.getRecentFiles().filter { !it.isFavorite && it.type == selectedType }
+        val allRecentFiles = tracker.getRecentFiles()
+        val allFavoriteFiles = tracker.getFavoriteFiles()
+        val filteredRecentFiles = allRecentFiles.filter { item ->
+            val typeMatches = selectedType == "All Files" || item.type == selectedType
+            val searchMatches = searchText.isBlank() ||
+                    item.name.lowercase().contains(searchText) ||
+                    item.extension.lowercase().contains(searchText) ||
+                    item.filePath.lowercase().contains(searchText)
+            typeMatches && searchMatches
         }
+
         recentFilesList.setListData(filteredRecentFiles.toTypedArray())
-
-        val filteredFavoriteFiles = if (selectedType == "All Files") {
-            tracker.getFavoriteFiles()
-        } else {
-            tracker.getFavoriteFiles().filter { it.type == selectedType }
+        val filteredFavoriteFiles = allFavoriteFiles.filter { item ->
+            val typeMatches = selectedType == "All Files" || item.type == selectedType
+            val searchMatches = searchText.isBlank() ||
+                    item.name.lowercase().contains(searchText) ||
+                    item.extension.lowercase().contains(searchText) ||
+                    item.filePath.lowercase().contains(searchText)
+            typeMatches && searchMatches
         }
+
         favoriteFilesList.setListData(filteredFavoriteFiles.toTypedArray())
 
         if (recentFilesList.model.size > 0) recentFilesList.selectedIndex = 0
@@ -146,8 +232,8 @@ class ShowRecentFilesAction : AnAction() {
             }
         })
         listToListen.addKeyListener(object : java.awt.event.KeyAdapter() {
-            override fun keyPressed(e: java.awt.event.KeyEvent) {
-                if (e.keyCode == java.awt.event.KeyEvent.VK_ENTER) {
+            override fun keyPressed(e: KeyEvent) {
+                if (e.keyCode == KeyEvent.VK_ENTER) {
                     openSelectedFile(listToListen)
                 }
             }
