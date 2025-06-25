@@ -16,7 +16,6 @@ import java.awt.event.MouseEvent
 
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.fileTypes.FileTypeManager
-import com.intellij.openapi.ui.Messages
 import com.intellij.ui.LayeredIcon
 import com.intellij.ui.components.*
 import com.intellij.ui.components.fields.ExtendableTextComponent
@@ -36,7 +35,6 @@ class ShowRecentFilesAction : AnAction() {
     private lateinit var popup: com.intellij.openapi.ui.popup.JBPopup
     private lateinit var typeFilterComboBox: ComboBox<String>
     private lateinit var searchField: ExtendableTextField
-    private lateinit var clearRecentButton: JButton
     private lateinit var recentFileRenderer: RecentFileItemRenderer
     private lateinit var favoriteFileRenderer: RecentFileItemRenderer
 
@@ -78,7 +76,7 @@ class ShowRecentFilesAction : AnAction() {
             })
         }
 
-        clearRecentButton = JButton("Clear List").apply {
+        /*clearRecentButton = JButton("Clear List").apply {
             toolTipText = "Clear non-favorite recent files from the list for this project."
             addActionListener {
                 isConfirmationDialogOpen = true
@@ -95,7 +93,7 @@ class ShowRecentFilesAction : AnAction() {
                     updateLists(tracker)
                 }
             }
-        }
+        }*/
 
         val tabbedPane = JBTabbedPane()
         tabbedPane.addTab("Recent Files", JBScrollPane(recentFilesList))
@@ -103,12 +101,11 @@ class ShowRecentFilesAction : AnAction() {
 
         tabbedPane.addChangeListener(object : ChangeListener {
             override fun stateChanged(e: ChangeEvent?) {
-                clearRecentButton.isVisible = tabbedPane.selectedIndex == 0
                 updateEmptyTextMessages()
             }
         })
 
-        val mainPanel = createMainPanel(searchField, typeFilterComboBox, clearRecentButton, tabbedPane)
+        val mainPanel = createMainPanel(searchField, typeFilterComboBox, tabbedPane)
 
         updateLists(tracker)
         updateEmptyTextMessages()
@@ -174,7 +171,6 @@ class ShowRecentFilesAction : AnAction() {
     private fun createMainPanel(
         searchField: ExtendableTextField,
         typeFilterComboBox: ComboBox<String>,
-        clearButton: JButton,
         tabbedPane: JBTabbedPane
     ): JBPanel<*> {
         val mainPanel = JBPanel<JBPanel<*>>(BorderLayout())
@@ -190,7 +186,7 @@ class ShowRecentFilesAction : AnAction() {
 
         val rightSidePanel = JPanel(FlowLayout(FlowLayout.RIGHT, JBUI.scale(5), 0))
         rightSidePanel.add(typeFilterComboBox)
-        rightSidePanel.add(clearButton)
+        //rightSidePanel.add(clearButton)
 
         filterPanel.add(rightSidePanel, BorderLayout.EAST)
 
