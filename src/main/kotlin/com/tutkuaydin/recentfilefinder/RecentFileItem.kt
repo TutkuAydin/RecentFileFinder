@@ -1,4 +1,4 @@
-package com.example.recentresourcefinder
+package com.tutkuaydin.recentfilefinder
 
 import com.intellij.util.xmlb.annotations.Attribute
 import com.intellij.util.xmlb.annotations.Tag

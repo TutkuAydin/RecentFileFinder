@@ -1,4 +1,4 @@
-package com.example.recentresourcefinder
+package com.tutkuaydin.recentfilefinder
 
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.AnAction

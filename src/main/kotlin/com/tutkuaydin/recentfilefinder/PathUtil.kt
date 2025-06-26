@@ -1,4 +1,4 @@
-package com.example.recentresourcefinder
+package com.tutkuaydin.recentfilefinder
 
 import java.io.File
 

@@ -1,4 +1,4 @@
-package com.example.recentresourcefinder
+package com.tutkuaydin.recentfilefinder
 
 import com.intellij.util.xmlb.XmlSerializerUtil
 import com.intellij.openapi.fileEditor.FileDocumentManagerListener

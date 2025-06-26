@@ -5,4 +5,4 @@ pluginManagement {
     }
 }
 
-rootProject.name = "RecentResourceFinder"
+rootProject.name = "RecentFileFinder"
